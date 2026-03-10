@@ -1,0 +1,69 @@
+# ==========================================
+# OmniQuant: Bio-Sentinel .gitignore
+# ==========================================
+
+# Django / Database
+db.sqlite3
+db.sqlite3-journal
+media/
+local_settings.py
+
+# Security / Environment Variables
+.env
+.env.local
+.env.*
+
+# Biometric / Machine Learning Models
+# (Do not commit the 100MB+ dlib file to Git)
+shape_predictor_68_face_landmarks.dat
+*.dat
+*.dat.bz2
+*.pt
+*.pth
+*.h5
+
+# Python Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+.tox/
+
+# Python Cache & Compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE / Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+.spyderproject
+.ropeproject
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

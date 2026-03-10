@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: #020617; color: #39ff14;
+            font-family: 'JetBrains Mono', monospace; padding: 40px;
+        }
+        .terminal-window {
+            background: rgba(0, 0, 0, 0.8); border: 1px solid #1e293b;
+            border-radius: 8px; padding: 20px; height: 80vh; overflow-y: scroll;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.1);
+        }
+        .log-entry { margin-bottom: 10px; border-left: 2px solid #334155; padding-left: 15px; }
+        .timestamp { color: #6366f1; font-weight: bold; }
+        .critical { color: #ff3131; font-weight: bold; }
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>SYS_AUDIT_TERMINAL // v3.2</div>
+        <div id="clock"></div>
+    </div>
+
+    <div class="terminal-window" id="log-container">
+        <div class="log-entry">
+            <span class="timestamp">[2026-02-27 21:45:02]</span> 
+            <span class="critical">CRITICAL_EVENT:</span> Circuit Breaker Engaged. EAR 0.18 detected. 
+            Dashboard locked for 30s.
+        </div>
+    </div>
+
+    <script>
+        // Update clock
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+        }, 1000);
+    </script>
+</body>
+</html>
