@@ -1,1 +1,1 @@
-# Omni-Quant-Bio-Sentinel : The Worlds first Biometric Locked Multi-Market Intelligence Ecosystem 
+# Omni-Quant-Bio-Sentinel : An AI-Driven Biometric Locked Multi-Market Intelligence Ecosystem 
