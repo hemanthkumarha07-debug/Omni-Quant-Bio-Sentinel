@@ -1,6 +1,8 @@
 from django.http import JsonResponse
 from .options_engine import OptionsGreeks # The math class we built earlier
 import random
+from markets.services.angel_auth import AngelOneAuthService
+
 
 def get_live_greeks(request):
     """Generates simulated live Greek data for the dashboard."""
@@ -23,3 +25,15 @@ def get_live_greeks(request):
         })
         
     return JsonResponse({"greeks": data})
+    from django.http import JsonResponse
+
+def initialize_broker_session(request):
+    auth_service = AngelOneAuthService()
+    result = auth_service.login_and_get_token()
+    
+    if result["success"]:
+        # The JWT is ready to be used for subsequent API calls
+        active_jwt = result["jwt_token"]
+        return JsonResponse({"message": "Market connection established successfully."})
+    else:
+        return JsonResponse({"error": result["error"]}, status=400)

@@ -1,54 +1,84 @@
-import json
+import os
+import ollama
+from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
+from langchain_community.vectorstores import Chroma
+
+DB_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chroma_db")
 
 class OmniQuantSpecialist:
-    """
-    Trained Llama 3.2 Specialist Router.
-    Logic: Fusion of Biometric Stability + Market Segment Specifics.
-    """
-    
-    # Training Context for reasoning patterns
     SPECIALIST_RULES = {
-        "STOCKS": "Focus on Delta (Δ) sensitivity and institutional volume.",
-        "FOREX": "Focus on PIP volatility and interest rate differentials.",
-        "CRYPTO": "Focus on liquidity gaps and funding rate anomalies.",
-        "GENERAL": "If EAR < 0.22, trigger LOCKDOWN and ignore all technical data."
+        "STOCKS": "Focus on momentum, volume gaps, and technical breakouts.",
+        "FOREX": "Focus on macro-liquidity and base currency strength.",
+        "CRYPTO": "Analyze extreme volatility and on-chain sentiment.",
+        "COMMODITY": "Evaluate supply-demand shifts and future pricing.",
+        "OPTIONS": "Analyze implied volatility and premium decay.",
+        "BONDS": "Analyze yield curve shifts, central bank interest rate expectations, and macro-economic debt indicators." # <-- ADD THIS LINE
     }
 
     @classmethod
-    def generate_intelligence(cls, segment, ear_score, market_data):
-        # 1. Critical Biometric Check (The Circuit Breaker)
+    def generate_intelligence(cls, segment, symbol, price_data, news_data, ear_score):
+        # 1. BIOMETRIC SAFETY CHECK
         if ear_score < 0.22:
             return {
                 "status": "CRITICAL",
-                "insight": "SYSTEM_LOCKDOWN: Physiological stress detected. AI Specialist has suspended all execution to preserve capital."
+                "insight": "SYSTEM_LOCKDOWN: Operator stress detected (EAR < 0.22). Intelligence feed suspended."
             }
 
-        # 2. Segment-Specific Reasoning
-        rule = cls.SPECIALIST_RULES.get(segment, cls.SPECIALIST_RULES["STOCKS"])
+        if not price_data or len(price_data) < 2:
+            return {"status": "ERROR", "insight": "> ERROR: Insufficient market data."}
+
+        # 2. PROCESS LIVE TELEMETRY
+        current_price = price_data[-1]['close']
+        start_price = price_data[0]['close']
+        percent_change = ((current_price - start_price) / start_price) * 100
+        trend = "BULLISH" if percent_change > 0 else "BEARISH"
         
-        # Simulated reasoning based on Greeks or Market Data
-        if segment == "STOCKS":
-            delta = market_data.get('delta', 0.5)
-            trend = "BULLISH" if delta > 0.6 else "NEUTRAL"
-            insight = f"TECHNICAL_AGENT ({segment}): {rule} Current Delta is {delta}. Trend is {trend}. Bio-Sentinel: OPTIMAL."
+        data_context = f"Current Price: {current_price} | Trend: {trend} ({percent_change:.2f}%)"
+        news_context = " | ".join([n['title'] for n in news_data[:3]]) if news_data else "No live news."
+        rule = cls.SPECIALIST_RULES.get(segment, "Maintain neutral stance.")
+
+        # 3. KNOWLEDGE VAULT RETRIEVAL (RAG)
+        vault_context = "Vault offline."
+        try:
+            search_query = f"{segment} trading strategy for a {trend} market."
+            embedding_model = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+            vector_db = Chroma(persist_directory=DB_DIR, embedding_function=embedding_model)
+            retrieved_docs = vector_db.similarity_search(search_query, k=1)
+            if retrieved_docs:
+                # We limit the vault context to 400 chars so the AI doesn't get distracted
+                vault_context = retrieved_docs[0].page_content[:400] 
+        except Exception:
+            pass # Failsafe if DB is busy
+
+        # 4. THE TERMINAL-STRICT PROMPT
+        prompt = f"""
+        System: You are OmniQuant Bio-Sentinel, a ruthless, highly precise quantitative trading AI.
         
-        elif segment == "FOREX":
-            vol = market_data.get('volatility', 'Low')
-            insight = f"MACRO_AGENT ({segment}): {rule} Market volatility is {vol}. Bio-Sentinel: OPTIMAL."
+        [DATA FEED]
+        Asset: {symbol} ({segment})
+        Data: {data_context}
+        News: {news_context}
+        Vault Strategy: {vault_context}
+
+        [INSTRUCTIONS]
+        Analyze the data and calculate a confidence score. You MUST output EXACTLY in the format below. 
+        DO NOT use markdown formatting. DO NOT use asterisks. DO NOT write conversational text.
+
+        SIGNAL: <BUY, SELL, or WAIT> | CONFIDENCE: <0-100>% | CLEARANCE: <OPTIMAL, CAUTION, or HOLD>
+        > REASON: <Strictly ONE punchy, highly technical sentence justifying the signal>
+        """
+
+        try:
+            response = ollama.chat(model='llama3.2', messages=[
+                {'role': 'user', 'content': prompt},
+            ])
             
-        else:
-            insight = f"QUANT_AGENT ({segment}): Monitoring {segment} liquidity. {rule} Bio-Sentinel: OPTIMAL."
-
-        return {"status": "STABLE", "insight": insight}
-
-# Django View to serve this intelligence
-from django.http import JsonResponse
-
-def get_ai_insight(request):
-    segment = request.GET.get('segment', 'STOCKS')
-    ear = float(request.GET.get('ear', 0.25))
-    # Mock market data for the reasoning engine
-    mock_data = {'delta': 0.68, 'volatility': 'High'}
-    
-    response = OmniQuantSpecialist.generate_intelligence(segment, ear, mock_data)
-    return JsonResponse(response)
+            return {
+                "status": "STABLE",
+                "insight": response['message']['content'].strip()
+            }
+        except Exception as e:
+            return {
+                "status": "OFFLINE",
+                "insight": f"> ERROR: Local AI Engine offline. ({str(e)})"
+            }

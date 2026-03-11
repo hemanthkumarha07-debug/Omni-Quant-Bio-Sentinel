@@ -3,128 +3,448 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200;800&family=Nanum+Brush+Script&display=swap" rel="stylesheet">
+    <title>OmniQuant | Systems 3.2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
-            --fusion-indigo: #6366f1; --bg-deep: #030712; --glass: rgba(255, 255, 255, 0.03);
-            --emergency-red: #ff3131; --success-green: #39ff14;
+            --theme-color: #00f3ff;
+            --theme-dim: rgba(0, 243, 255, 0.15);
+            --theme-glow: rgba(0, 243, 255, 0.4);
+            --j-bg: #02040a;
         }
 
         body, html {
-            margin: 0; background: var(--bg-deep); font-family: 'Plus Jakarta Sans', sans-serif;
-            color: white; overflow: hidden; width: 100vw; height: 100vh;
+            margin: 0; background: var(--j-bg); font-family: 'Rajdhani', sans-serif;
+            color: var(--theme-color); overflow: hidden; width: 100vw; height: 100vh;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(20, 30, 50, 0.8) 0%, transparent 70%),
+                linear-gradient(var(--theme-dim) 1px, transparent 1px),
+                linear-gradient(90deg, var(--theme-dim) 1px, transparent 1px);
+            background-size: 100% 100%, 50px 50px, 50px 50px;
+            transition: all 0.5s ease;
         }
 
-        /* --- THE CIRCUIT BREAKER --- */
-        #stress-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 9999; opacity: 0; transition: opacity 0.8s ease;
-            background: radial-gradient(circle, transparent 20%, rgba(255, 0, 0, 0.3) 100%);
-        }
-        #main-viewport { transition: filter 0.5s ease; width: 100%; height: 100%; display: flex; flex-direction: column; }
-        .system-lockdown { filter: url(#heavy-blur) grayscale(1) !important; pointer-events: none !important; }
+        @keyframes rotate-ring { 100% { transform: rotate(360deg); } }
+        @keyframes rotate-ring-reverse { 100% { transform: rotate(-360deg); } }
+        @keyframes pulse-glow { 0%, 100% { text-shadow: 0 0 10px var(--theme-color); } 50% { text-shadow: 0 0 25px var(--theme-color), 0 0 5px #fff; } }
+        @keyframes scanline { 0% { top: -10%; } 100% { top: 110%; } }
 
-        /* --- HEADER & DYNAMIC NAV --- */
-        .master-header {
+        .hud-panel {
+            background: rgba(5, 10, 20, 0.4); backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05); border-top: 2px solid var(--theme-color);
+            box-shadow: inset 0 0 20px var(--theme-dim), 0 8px 32px rgba(0, 0, 0, 0.5);
+            padding: 20px; position: relative; border-radius: 8px;
+            transition: all 0.5s ease; z-index: 10;
+        }
+        
+        .hud-panel::before, .hud-panel::after { content: ''; position: absolute; width: 15px; height: 15px; border: 2px solid var(--theme-color); transition: all 0.5s ease; }
+        .hud-panel::before { top: -2px; left: -2px; border-right: none; border-bottom: none; border-top-left-radius: 8px; }
+        .hud-panel::after { bottom: -2px; right: -2px; border-left: none; border-top: none; border-bottom-right-radius: 8px; }
+
+        .hud-header {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 10px 40px; background: rgba(3, 7, 18, 0.9); backdrop-filter: blur(15px);
-            border-bottom: 1px solid rgba(255,255,255,0.05); z-index: 1000;
-        }
-        .brush-branding { font-family: 'Nanum Brush Script', cursive; font-size: 2rem; background: linear-gradient(45deg, var(--fusion-indigo), #fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        
-        .market-nav { display: flex; align-items: center; gap: 20px; }
-        .nav-link { text-decoration: none; color: rgba(255,255,255,0.4); font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; cursor: pointer; transition: 0.3s; }
-        .nav-link.active { color: var(--fusion-indigo); }
-
-        /* SEARCH BAR */
-        .search-box input {
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 100px; padding: 6px 15px; color: white; font-size: 0.7rem; outline: none; width: 200px;
+            padding: 15px 40px; background: rgba(2, 5, 10, 0.6); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--theme-dim); box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            position: relative; z-index: 10000; 
         }
 
-        /* --- GRID LAYOUT --- */
-        .dashboard-grid { display: grid; grid-template-columns: 2.5fr 1fr; gap: 25px; padding: 25px; flex-grow: 1; }
-        .glass-card { background: var(--glass); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; padding: 25px; backdrop-filter: blur(20px); }
-        
-        #chart-container { height: 400px; border-radius: 15px; overflow: hidden; margin-bottom: 20px; }
+        .sys-title { font-size: 1.8rem; font-weight: 700; animation: pulse-glow 3s infinite; margin: 0; color: #fff; text-shadow: 0 0 10px var(--theme-color); }
+        .sys-title span { font-weight: 400; opacity: 0.6; font-size: 1rem; color: var(--theme-color); }
+
+        .market-nav { display: flex; align-items: center; gap: 25px; }
+        .nav-link { color: var(--theme-color); opacity: 0.5; text-decoration: none; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: 0.3s; letter-spacing: 1px; }
+        .nav-link.active, .nav-link:hover { opacity: 1; text-shadow: 0 0 15px var(--theme-color); }
+        .nav-link.active::before { content: '[ '; }
+        .nav-link.active::after { content: ' ]'; }
+
+        .nav-group { position: relative; display: inline-block; padding-bottom: 10px; margin-bottom: -10px; z-index: 10001; }
+        .dropdown-content {
+            display: none; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+            background: rgba(5, 10, 20, 0.95); backdrop-filter: blur(20px);
+            border: 1px solid var(--theme-color); box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            min-width: 180px; border-radius: 8px; overflow: hidden; margin-top: 10px; z-index: 10002; 
+        }
+        .nav-group:hover .dropdown-content { display: block; }
+        .dropdown-content a { color: white; padding: 12px 20px; text-decoration: none; display: block; font-size: 0.8rem; font-family: 'Share Tech Mono'; transition: 0.3s; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .dropdown-content a:hover { background: var(--theme-dim); color: var(--theme-color); padding-left: 25px; }
+
+        .search-box { display: flex; align-items: center; position: relative; }
+        .search-box input { background: rgba(0,0,0,0.4); border: 1px solid var(--theme-dim); border-radius: 4px; color: white; font-family: 'Share Tech Mono', monospace; padding: 8px 15px 8px 30px; outline: none; width: 220px; transition: 0.3s; backdrop-filter: blur(5px); }
+        .search-box input:focus { border-color: var(--theme-color); box-shadow: 0 0 15px var(--theme-dim); }
+        .search-box::before { content: '⌕'; position: absolute; left: 10px; color: var(--theme-color); font-size: 1.2rem; }
+
+        .dashboard-grid { display: grid; grid-template-columns: 2.8fr 1fr; gap: 30px; padding: 30px; height: calc(100vh - 100px); }
+        #chart-container { height: 100%; min-height: 450px; border-radius: 8px; position: relative; overflow: hidden; background: rgba(0,0,0,0.3); z-index: 1; }
+        .scan-line { position: absolute; width: 100%; height: 2px; background: var(--theme-glow); box-shadow: 0 0 10px var(--theme-color); animation: scanline 4s linear infinite; z-index: 10; pointer-events: none; }
+
+        .ai-core { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .arc-reactor { width: 50px; height: 50px; position: relative; display: flex; justify-content: center; align-items: center; }
+        .ring-outer { position: absolute; width: 100%; height: 100%; border: 1px dashed var(--theme-color); border-radius: 50%; animation: rotate-ring 10s linear infinite; opacity: 0.5; }
+        .ring-inner { position: absolute; width: 70%; height: 70%; border: 2px solid var(--theme-color); border-radius: 50%; border-top-color: transparent; animation: rotate-ring-reverse 5s linear infinite; }
+        .core-dot { width: 8px; height: 8px; background: #fff; border-radius: 50%; box-shadow: 0 0 15px #fff, 0 0 30px var(--theme-color); }
+
+        .terminal-text { font-family: 'Share Tech Mono', monospace; font-size: 0.85rem; line-height: 1.6; color: #e2e8f0; }
+        .highlight { color: var(--theme-color); font-weight: bold; text-shadow: 0 0 8px var(--theme-dim); }
+
+        #news-container::-webkit-scrollbar { width: 4px; }
+        #news-container::-webkit-scrollbar-thumb { background: var(--theme-dim); border-radius: 10px; }
+
+        /* --- ADDED: Color classes for AI Signals --- */
+        .signal-buy { color: #00ff88 !important; text-shadow: 0 0 10px rgba(0, 255, 136, 0.6); }
+        .signal-sell { color: #ff003c !important; text-shadow: 0 0 10px rgba(255, 0, 60, 0.6); }
+        .signal-wait { color: #ffaa00 !important; text-shadow: 0 0 10px rgba(255, 170, 0, 0.6); }
     </style>
 </head>
 <body>
 
-    <svg style="position: absolute; width: 0; height: 0;"><filter id="heavy-blur"><feGaussianBlur stdDeviation="12" /></filter></svg>
-    <div id="stress-overlay"></div>
-
     <div id="main-viewport">
-        <header class="master-header">
-            <h1 class="brush-branding">Omni Quant: Bio-Sentinel</h1>
+        <header class="hud-header">
+            <h1 class="sys-title">OMNI_QUANT <span>// BIO-SENTINEL v3.2</span></h1>
             
             <nav class="market-nav">
-                <div class="search-box"><input type="text" id="m-search" placeholder="SEARCH ASSET..."></div>
-                <span class="nav-link active" onclick="switchSegment('STOCKS', 'NSE:NIFTY')">STOCKS</span>
-                <span class="nav-link" onclick="switchSegment('FOREX', 'FX:EURUSD')">FOREX</span>
-                <span class="nav-link" onclick="switchSegment('CRYPTO', 'BINANCE:BTCUSDT')">CRYPTO</span>
-                <span class="nav-link" onclick="switchSegment('COMMODITY', 'TVC:GOLD')">COMMODITY</span>
-                <span class="nav-link" onclick="switchSegment('OPTIONS', 'NSE:NIFTY')">OPTIONS</span>
+                <div class="search-box">
+                    <input type="text" id="m-search" placeholder="QUERY TICKER (Press Enter)..." onkeydown="handleSearch(event)">
+                </div>
+
+                <div class="nav-group">
+                    <span class="nav-link active" id="nav-stocks" style="cursor: default;">[ STOCKS ▾ ]</span>
+                    <div class="dropdown-content">
+                        <a href="#" onclick="updateTicker('RELIANCE');">DOMESTIC (RELIANCE)</a>
+                        <a href="#" onclick="updateTicker('AAPL');">INTERNATIONAL (AAPL)</a>
+                        <a href="#" onclick="updateTicker('TSLA');">TESLA (INTL)</a>
+                    </div>
+                </div>
+
+                <span class="nav-link" id="nav-forex" onclick="switchSegment('FOREX', 'USDINR', '#00ff88')">FOREX</span>
+                <span class="nav-link" id="nav-crypto" onclick="switchSegment('CRYPTO', 'BTC', '#b829ea')">CRYPTO</span>
+                <span class="nav-link" id="nav-commodity" onclick="switchSegment('COMMODITY', 'GOLD', '#ffaa00')">COMMODITY</span>
+                <span class="nav-link" id="nav-options" onclick="switchSegment('OPTIONS', 'NIFTY', '#ff0055')">OPTIONS</span>
+                <span class="nav-link" id="nav-bonds" onclick="switchSegment('BONDS', 'US10Y', '#4dffb8')">BONDS</span>
             </nav>
 
-            <div class="status-pill" style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.05); padding:5px 15px; border-radius:100px;">
-                <div id="s-ring" style="width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 10px #10b981;"></div>
-                <span id="s-label" style="font-size:0.7rem; font-weight:800;">STABLE</span>
+            <div style="font-family: 'Share Tech Mono'; display: flex; gap: 15px; border: 1px solid var(--theme-dim); padding: 5px 15px; border-radius: 4px; background: rgba(0,0,0,0.5);">
+                <span style="color: white; opacity: 0.6;">SYS.STAT:</span> 
+                <span id="s-label" class="highlight">ONLINE</span>
             </div>
         </header>
 
         <div class="dashboard-grid">
-            <div class="glass-card" style="display:flex; flex-direction:column;">
-                <h2 id="seg-title" style="font-weight:200; margin:0 0 15px 0;">STOCKS INTELLIGENCE</h2>
-                
+            <div class="hud-panel" style="display:flex; flex-direction:column;">
+                <h2 id="seg-title" style="margin:0 0 15px 0; font-size: 1.4rem; letter-spacing: 2px; text-transform: uppercase;">[ STOCKS_INTELLIGENCE ]</h2>
                 <div id="chart-container">
-                    <div id="tv_chart"></div>
-                </div>
-
-                <div id="data-table-area">
-                    <p style="opacity:0.4; font-size:0.8rem;">Syncing Segment Data...</p>
+                    <div class="scan-line"></div>
+                    <div id="tv_chart" style="height: 100%; width: 100%; position: absolute; top:0; left:0;"></div>
                 </div>
             </div>
 
-            <div class="sidebar" style="display:flex; flex-direction:column; gap:25px;">
-                <div class="glass-card" style="border-top: 4px solid var(--fusion-indigo);">
-                    <h3 style="font-size:0.7rem; color:var(--fusion-indigo); letter-spacing:2px; margin-top:0;">AI SENTINEL</h3>
-                    <p id="ai-insight" style="opacity:0.7; font-size:0.85rem; line-height:1.6;">Initializing Llama 3.2 Reasoning...</p>
+            <div style="display:flex; flex-direction:column; gap:25px;">
+                <div class="hud-panel">
+                    <div class="ai-core">
+                        <div class="arc-reactor"><div class="ring-outer"></div><div class="ring-inner"></div><div class="core-dot"></div></div>
+                        <div><h3 style="margin: 0; font-size: 1.1rem; letter-spacing: 1px; color: #fff;">LLAMA_3.2_CORE</h3><span class="highlight" style="font-size: 0.7rem;">BIOMETRICS ACTIVE // FATIGUE: 0%</span></div>
+                    </div>
+                    <div style="border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 15px;">
+                        <span class="highlight" style="font-size: 0.8rem;">> LIVE_FEEDBACK_STREAM</span>
+                        <p id="ai-insight" class="terminal-text" style="margin-top: 10px; min-height: 80px;">Awaiting telemetry...</p>
+                    </div>
+                </div>
+
+                <div class="hud-panel" style="flex-grow: 1; overflow: hidden; display: flex; flex-direction: column;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 0.9rem; color: #fff; letter-spacing: 1px;">[ INTEL_FEED ]</h3>
+                    <div id="news-container" class="terminal-text" style="overflow-y: auto; flex-grow: 1; padding-right: 5px;">
+                        <p class="highlight">> Awaiting news uplink...</p>
+                    </div>
+                    <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; margin-top: 10px; font-size: 0.7rem;">
+                        <span style="opacity: 0.6;">CURRENT_ASSET:</span> <span id="asset-label" style="color: #fff;">RELIANCE</span>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://s3.tradingview.com/tv.js"></script>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <script>
         let currentSegment = 'STOCKS';
+        let currentHexColor = '#00f3ff';
+        let typingTimer = null; 
+        let tvWidget = null;
 
-        function switchSegment(seg, symbol) {
+        function simulateTyping(text) {
+            const el = document.getElementById('ai-insight');
+            if (typingTimer !== null) { clearInterval(typingTimer); }
+            el.innerHTML = '';
+            
+            // --- ADDED: Colorize the Signal Output ---
+            let formattedText = text;
+            if (text.includes('SIGNAL: BUY')) {
+                formattedText = text.replace('SIGNAL: BUY', '<span class="signal-buy">SIGNAL: BUY</span>');
+            } else if (text.includes('SIGNAL: SELL')) {
+                formattedText = text.replace('SIGNAL: SELL', '<span class="signal-sell">SIGNAL: SELL</span>');
+            } else if (text.includes('WAIT') || text.includes('HOLD')) {
+                formattedText = text.replace(/SIGNAL: (WAIT|HOLD)/g, '<span class="signal-wait">SIGNAL: $1</span>');
+            }
+
+            // We use innerHTML directly for the styled text instead of typewriter effect to avoid breaking HTML tags
+            el.innerHTML = formattedText;
+        }
+
+        async function fetchNews(symbol) {
+            const container = document.getElementById('news-container');
+            container.innerHTML = '<p class="highlight">> SYNCING NEWS FEED...</p>';
+            try {
+                const res = await fetch(`/api/market-news/?symbol=${symbol}`);
+                const result = await res.json();
+                if (result.news && result.news.length > 0) {
+                    container.innerHTML = result.news.map(n => `
+                        <div style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 8px;">
+                            <a href="${n.url}" target="_blank" style="color: var(--theme-color); text-decoration: none; font-size: 0.8rem; display: block; line-height: 1.2;">${n.title}</a>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.65rem; opacity: 0.5; margin-top: 4px;">
+                                <span>SOURCE: ${n.source.toUpperCase()}</span>
+                                <span style="color: ${n.sentiment > 0 ? '#00ff88' : '#ff003c'}">${n.sentiment > 0 ? 'BULLISH' : 'BEARISH'}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else { container.innerHTML = '<p style="opacity:0.5;">> No recent intelligence found.</p>'; }
+            } catch (e) { container.innerHTML = '<p class="highlight">> NEWS UPLINK FAILED.</p>'; }
+        }
+
+        async function updateAIIntelligence(symbol, segment) {
+            const el = document.getElementById('ai-insight');
+            el.innerHTML = "> ANALYZING TELEMETRY VIA OMNIQUANT VAULT...";
+            try {
+                const res = await fetch(`/api/ai-insight/?symbol=${symbol}&segment=${segment}`);
+                const result = await res.json();
+                simulateTyping(result.insight);
+            } catch (e) { el.innerHTML = "> AI CORE OFFLINE. CHECK CHROMA_DB LINK."; }
+        }
+
+        function updateTicker(symbol) {
+            currentSegment = 'STOCKS';
+            document.activeElement.blur();
+            switchSegment('STOCKS', symbol, '#00f3ff');
+        }
+
+        function handleSearch(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); 
+                let query = event.target.value.toUpperCase().trim();
+                if(!query) return;
+                document.getElementById('m-search').blur();
+                simulateTyping(`> Syncing ${currentSegment} uplink for: ${query}...`);
+                renderChart(query, currentHexColor);
+                event.target.value = ''; 
+            }
+        }
+
+        function switchSegment(seg, symbol, hexColor) {
             currentSegment = seg;
-            document.getElementById('seg-title').innerText = seg + " INTELLIGENCE";
+            currentHexColor = hexColor;
+            document.documentElement.style.setProperty('--theme-color', hexColor);
+            const r = parseInt(hexColor.slice(1, 3), 16), g = parseInt(hexColor.slice(3, 5), 16), b = parseInt(hexColor.slice(5, 7), 16);
+            document.documentElement.style.setProperty('--theme-dim', `rgba(${r}, ${g}, ${b}, 0.15)`);
+            document.documentElement.style.setProperty('--theme-glow', `rgba(${r}, ${g}, ${b}, 0.4)`);
+            document.getElementById('seg-title').innerText = `[ ${seg}_INTELLIGENCE ]`;
             document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-            event.target.classList.add('active');
+            const navId = `nav-${seg.toLowerCase()}`;
+            if(document.getElementById(navId)) document.getElementById(navId).classList.add('active');
+            renderChart(symbol, hexColor);
+        }
 
-            // Update Chart
-            new TradingView.widget({
-                "autosize": true, "symbol": symbol, "interval": "D", "timezone": "Etc/UTC",
-                "theme": "dark", "style": "1", "container_id": "tv_chart", "hide_top_toolbar": true
+        function renderChart(symbol, hexColor) {
+            document.getElementById('asset-label').innerText = symbol.toUpperCase();
+            
+            let tvSymbol = symbol;
+            
+            if (currentSegment === 'STOCKS') {
+                if (!tvSymbol.includes(':')) {
+                    tvSymbol = (symbol === 'AAPL' || symbol === 'TSLA' || symbol === 'MSFT') ? `NASDAQ:${symbol}` : `NSE:${symbol}`;
+                }
+            } else if (currentSegment === 'CRYPTO') {
+                tvSymbol = `BINANCE:${symbol}USDT`; 
+            } else if (currentSegment === 'FOREX') {
+                tvSymbol = `FX_IDC:${symbol}`;
+            } else if (currentSegment === 'COMMODITY') {
+                const commMap = {"GOLD": "TVC:GOLD", "SILVER": "TVC:SILVER", "CRUDE": "TVC:USOIL"};
+                tvSymbol = commMap[symbol] || `TVC:${symbol}`;
+            } else if (currentSegment === 'OPTIONS') {
+                const indexMap = {
+                    "NIFTY": "NSEIX:NIFTY1!",       
+                    "BANKNIFTY": "NSE:BANKNIFTY1!", 
+                    "FINNIFTY": "NSE:FINNIFTY1!"
+                };
+                tvSymbol = indexMap[symbol] || `NSE:${symbol}`;
+            } else if (currentSegment === 'BONDS') {
+                const bondMap = {
+                    "US10Y": "TVC:US10Y",
+                    "US02Y": "TVC:US02Y",
+                    "IN10Y": "TVC:IN10Y"
+                };
+                tvSymbol = bondMap[symbol] || `TVC:${symbol}`;
+            }
+
+            document.getElementById('tv_chart').innerHTML = '';
+
+            tvWidget = new TradingView.widget({
+                "autosize": true,
+                "symbol": tvSymbol,
+                "interval": "D",
+                "timezone": "Asia/Kolkata",
+                "theme": "dark",
+                "style": "1", 
+                "locale": "en",
+                "enable_publishing": false,
+                "backgroundColor": "rgba(2, 4, 10, 0)",
+                "gridColor": "rgba(255, 255, 255, 0.05)",
+                "hide_top_toolbar": false,
+                "hide_legend": false,
+                "save_image": false,
+                "container_id": "tv_chart",
+                "toolbar_bg": "rgba(5, 10, 20, 0.9)"
             });
 
-            updateAI();
+            fetchNews(symbol);
+            updateAIIntelligence(symbol, currentSegment);
         }
 
-        async function updateAI() {
-            const ear = document.getElementById('s-label').innerText === "STABLE" ? 0.25 : 0.15;
-            const res = await fetch(`/get-ai-insight/?segment=${currentSegment}&ear=${ear}`);
-            const data = await res.json();
-            document.getElementById('ai-insight').innerText = data.insight;
-        }
-
-        // Initialize first chart
-        switchSegment('STOCKS', 'NSE:NIFTY');
-        setInterval(updateAI, 5000);
+        switchSegment('STOCKS', 'RELIANCE', '#00f3ff');
     </script>
-    <script src="{% static 'js/sentinel.js' %}"></script>
+
+    <script>
+        console.log("[SENTINEL] Booting INLINE Visual Biometric Engine...");
+
+        const video = document.createElement('video');
+        video.setAttribute('autoplay', 'true');
+        video.setAttribute('playsinline', 'true');
+        video.style.position = 'fixed';
+        video.style.bottom = '20px';
+        video.style.right = '20px';
+        video.style.width = '160px';
+        video.style.border = '2px solid var(--theme-color)';
+        video.style.borderRadius = '8px';
+        video.style.boxShadow = '0 0 15px var(--theme-dim)';
+        video.style.opacity = '0.8';
+        video.style.zIndex = '9999';
+        video.style.transform = 'scaleX(-1)'; 
+        document.body.appendChild(video);
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        canvas.width = 64;  
+        canvas.height = 48;
+
+        let previousFrame = [];
+        let fatigueMeter = 0; 
+        let isSystemLocked = false;
+
+        navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: false })
+            .then(stream => {
+                video.srcObject = stream;
+                console.log("[SENTINEL] Camera Feed Acquired.");
+                
+                video.onplaying = () => {
+                    updateSentinelUI("BIOMETRICS ONLINE // TRACKING", "#00ff88");
+                    setInterval(trackPresence, 200); 
+                };
+            })
+            .catch(err => {
+                console.error("[SENTINEL] Camera access denied:", err);
+                updateSentinelUI("CAMERA DENIED // CHECK BROWSER PERMISSIONS", "#ffaa00");
+            });
+
+        function trackPresence() {
+            if (video.paused || video.ended) return;
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            
+            let movementScore = 0;
+
+            if (previousFrame.length > 0) {
+                // FOCUS ZONE: Only check the center 50% of the screen.
+                const startY = Math.floor(canvas.height * 0.25);
+                const endY = Math.floor(canvas.height * 0.75);
+                const startX = Math.floor(canvas.width * 0.25);
+                const endX = Math.floor(canvas.width * 0.75);
+
+                for (let y = startY; y < endY; y++) {
+                    for (let x = startX; x < endX; x++) {
+                        let i = (y * canvas.width + x) * 4;
+                        
+                        let diffR = Math.abs(frameData[i] - previousFrame[i]);
+                        let diffG = Math.abs(frameData[i+1] - previousFrame[i+1]);
+                        let diffB = Math.abs(frameData[i+2] - previousFrame[i+2]);
+                        
+                        // High threshold ignores camera static/grain
+                        if (diffR > 35 || diffG > 35 || diffB > 35) {
+                            movementScore++; 
+                        }
+                    }
+                }
+            }
+
+            previousFrame = new Uint8ClampedArray(frameData);
+
+            if (movementScore > 10) { 
+                fatigueMeter -= 15;
+                if (fatigueMeter < 0) fatigueMeter = 0;
+                
+                if (isSystemLocked && fatigueMeter === 0) {
+                    restoreSystem();
+                }
+            } else {
+                fatigueMeter += 12; 
+                if (fatigueMeter > 100) fatigueMeter = 100;
+                
+                if (fatigueMeter >= 100 && !isSystemLocked) {
+                    triggerSystemLockdown();
+                }
+            }
+
+            const statusUI = document.querySelector('.ai-core span.highlight');
+            if (statusUI && !isSystemLocked) {
+                statusUI.innerText = `BIOMETRICS ACTIVE // FATIGUE: ${fatigueMeter}%`;
+                statusUI.style.color = fatigueMeter > 50 ? "#ffaa00" : "#00ff88";
+            }
+        }
+
+        function updateSentinelUI(message, color) {
+            const statusUI = document.querySelector('.ai-core span.highlight');
+            if (statusUI) {
+                statusUI.innerText = message;
+                statusUI.style.color = color;
+            }
+        }
+
+        function triggerSystemLockdown() {
+            isSystemLocked = true;
+            video.style.borderColor = '#ff003c';
+            
+            document.documentElement.style.setProperty('--theme-color', '#ff003c');
+            document.documentElement.style.setProperty('--theme-glow', 'rgba(255, 0, 60, 0.6)');
+            
+            updateSentinelUI("FATIGUE CRITICAL // SYSTEM LOCKED", "#ff003c");
+
+            const aiPanel = document.getElementById('ai-insight');
+            if(aiPanel) {
+                aiPanel.innerHTML = '<span style="color:#ff003c; font-weight:bold; font-size:1.1rem;">SYSTEM_LOCKDOWN: Operator fatigue detected. Intelligence feed suspended to preserve capital. Move to restore.</span>';
+            }
+        }
+
+        function restoreSystem() {
+            isSystemLocked = false;
+            video.style.borderColor = '#00f3ff'; 
+            
+            document.documentElement.style.setProperty('--theme-color', currentHexColor);
+            
+            updateSentinelUI("BIOMETRICS ONLINE // TRACKING", "#00ff88");
+
+            try {
+                const currentSymbol = document.getElementById('asset-label').innerText;
+                if(typeof updateAIIntelligence === "function") {
+                    updateAIIntelligence(currentSymbol, currentSegment);
+                }
+            } catch(e) {}
+        }
+    </script>
 </body>
 </html>

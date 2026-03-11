@@ -67,3 +67,5 @@ wheels/
 .Trashes
 ehthumbs.db
 Thumbs.db
+chroma_db/chroma.sqlite3
+engine/knowledge/combined_options_data.csv
